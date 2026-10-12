@@ -78,7 +78,17 @@ Giá sách không chia thể loại. Thứ tự sách được xáo ngẫu nhiê
 
 ## Đưa lên web
 
-Trang là static (`dist/`), host ở đâu cũng được. Gợi ý: **Cloudflare Pages** hoặc **Vercel**. Kết nối repo GitHub này, chọn framework Astro (build `npm run build`, thư mục output `dist`). Từ đó mỗi lần push là trang tự cập nhật, và mỗi PR có một bản preview riêng.
+Trang là static (`dist/`). Repo đã cấu hình sẵn cho **Cloudflare Workers** qua file `wrangler.jsonc`: tên Worker là `portfolio`, upload thư mục `dist/`, trang 404 lấy từ `src/pages/404.astro`.
+
+Cấu hình build trên Cloudflare (Workers & Pages → portfolio → Settings → Build):
+
+| | |
+|---|---|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/` |
+
+Nếu đổi tên Worker trên dashboard thì phải sửa `name` trong `wrangler.jsonc` cho trùng. Muốn deploy thẳng từ máy: `npx wrangler login`, rồi `npm run deploy`.
 
 Sau này nếu muốn thêm bài ngay trên điện thoại mà không cần mở code: thêm [Keystatic](https://keystatic.com). Đây là CMS lưu thẳng vào git và đọc được các file Markdown ở trên.
 
