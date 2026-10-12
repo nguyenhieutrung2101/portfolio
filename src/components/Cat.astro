@@ -1,0 +1,145 @@
+---
+/**
+ * Mèo. One SVG, split into groups so each part can move on its own.
+ * Behaviour lives in scripts/cat-brain.ts; this file is only the drawing and
+ * the ambient (always-on) CSS loops.
+ *
+ * Group nesting is deliberate: each layer is driven by one thing only, so a
+ * CSS loop, a one-shot WAAPI gesture and a JS spring never fight over the same
+ * transform.
+ */
+interface Props {
+  size?: 'sm' | 'lg';
+  label?: string;
+  class?: string;
+}
+const { size = 'lg', label = 'Mèo. Chạm để vuốt ve.', class: className } = Astro.props;
+---
+
+<button type="button" class:list={['cat', `cat-${size}`, className]} data-cat aria-label={label} data-no-press>
+  <svg viewBox="-6 -14 132 128" aria-hidden="true" focusable="false">
+    <g class="c-root">
+      <g class="c-tail-sway">
+        <g class="c-tail">
+          <path class="c-tail-ink" d="M84 100 C 106 100, 116 82, 108 62" />
+          <path class="c-tail-fill" d="M84 100 C 106 100, 116 82, 108 62" />
+        </g>
+      </g>
+      <g class="c-breath">
+        <rect class="c-fill" x="30" y="52" width="60" height="57" rx="24" />
+      </g>
+      <g class="c-paw c-paw-l"><rect class="c-fill" x="32" y="96" width="23" height="14" rx="7" /></g>
+      <g class="c-paw c-paw-r"><rect class="c-fill" x="65" y="96" width="23" height="14" rx="7" /></g>
+      <g class="c-head-look">
+        <g class="c-head-pose">
+          <g class="c-head">
+            <g class="c-ear c-ear-l"><path class="c-fill" d="M30 36 L33 6 L55 23 Z" /><path class="c-ear-in" d="M35 27 L36 14 L46 22 Z" /></g>
+            <g class="c-ear c-ear-r"><path class="c-fill" d="M90 36 L87 6 L65 23 Z" /><path class="c-ear-in" d="M85 27 L84 14 L74 22 Z" /></g>
+            <rect class="c-fill" x="24" y="18" width="72" height="57" rx="26" />
+            <g class="c-eyes">
+              <g class="c-eye-wrap"><ellipse class="c-eye" cx="45" cy="44" rx="3" ry="5" /></g>
+              <g class="c-eye-wrap"><ellipse class="c-eye" cx="75" cy="44" rx="3" ry="5" /></g>
+            </g>
+            <path class="c-ink-fill" d="M56.5 52.5 h7 l-3.5 3.6 z" />
+            <path class="c-mouth" d="M54 59 q3 3 6 0 q3 3 6 0" />
+            <ellipse class="c-yawn" cx="60" cy="62" rx="4.5" ry="5" />
+            <path class="c-whisker" d="M41 55 L20 52 M41 59 L21 61" />
+            <path class="c-whisker" d="M79 55 L100 52 M79 59 L99 61" />
+          </g>
+        </g>
+      </g>
+      <g class="c-zzz">
+        <text x="96" y="14">z</text>
+        <text x="106" y="2">z</text>
+      </g>
+      <path class="c-heart" d="M60 4 c-3-5-11-3-9 3 c1 3 9 8 9 8 c0 0 8-5 9-8 c2-6-6-8-9-3z" />
+    </g>
+  </svg>
+</button>
+
+<style>
+  .cat {
+    --stroke: var(--cat-ink);
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .cat-lg { width: 132px; }
+  .cat-sm { width: 44px; min-height: 44px; }
+  .cat svg { width: 100%; height: auto; overflow: visible; }
+
+  .cat :global(g) { transform-box: fill-box; }
+  .c-fill { fill: var(--cat-orange); stroke: var(--stroke); stroke-width: 2.4; stroke-linejoin: round; }
+  .cat-sm .c-fill { stroke-width: 4; }
+  .c-ear-in { fill: color-mix(in srgb, var(--pink) 70%, var(--cat-orange)); }
+  .c-ink-fill, .c-eye { fill: var(--stroke); }
+  .c-mouth, .c-whisker { fill: none; stroke: var(--stroke); stroke-width: 1.6; stroke-linecap: round; }
+  .cat-sm .c-whisker { display: none; }
+  .cat-sm .c-mouth { stroke-width: 3; }
+  .c-tail-ink, .c-tail-fill { fill: none; stroke-linecap: round; }
+  .c-tail-ink { stroke: var(--stroke); stroke-width: 13; }
+  .c-tail-fill { stroke: var(--cat-orange); stroke-width: 8.6; }
+  .cat-sm .c-tail-ink { stroke-width: 16; }
+  .cat-sm .c-tail-fill { stroke-width: 9; }
+  .c-yawn { fill: var(--stroke); opacity: 0; transform-box: fill-box; transform-origin: 50% 0%; }
+  .c-zzz text { font: 600 13px/1 var(--font-sans); fill: var(--ink); opacity: 0; }
+  .c-heart { fill: var(--pink); stroke: var(--stroke); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: 50% 100%; }
+
+  /* Transform origins: rotate around the joint, not the middle. */
+  .c-root { transform-origin: 50% 100%; }
+  .c-tail, .c-tail-sway { transform-origin: 0% 100%; }
+  .c-breath { transform-origin: 50% 100%; }
+  .c-head-look, .c-head-pose, .c-head { transform-origin: 50% 85%; }
+  .c-ear-l { transform-origin: 30% 95%; }
+  .c-ear-r { transform-origin: 70% 95%; }
+  .c-eye-wrap { transform-origin: 50% 50%; }
+  .c-paw { transform-origin: 50% 100%; }
+
+  /* ── Ambient loops (cheap, transform-only) ─────────────────────────── */
+  .c-breath { animation: c-breathe 3.6s ease-in-out infinite; }
+  .c-head-pose { animation: c-head-breathe 3.6s ease-in-out infinite; }
+  .c-tail-sway { animation: c-sway var(--sway-period, 4.2s) ease-in-out infinite alternate; }
+
+  @keyframes c-breathe { 50% { transform: scale(1.012, 1.03); } }
+  @keyframes c-head-breathe { 50% { transform: translateY(-0.8px); } }
+  @keyframes c-sway {
+    from { transform: rotate(calc(var(--sway, 7deg) * -0.4)); }
+    to { transform: rotate(var(--sway, 7deg)); }
+  }
+
+  /* Sleeping: slower breath, head droops, tail wraps in, Zs drift. */
+  .cat[data-state='sleep'] .c-breath { animation-duration: 5.2s; }
+  .cat[data-state='sleep'] .c-head-pose { animation: c-head-sleep 5.2s ease-in-out infinite; }
+  .cat[data-state='sleep'] .c-tail-sway { animation: none; transform: rotate(-28deg); transition: transform 1.2s cubic-bezier(0.3, 0, 0.2, 1); }
+  .cat[data-state='sleep'] .c-eye-wrap { transform: scaleY(0.12); transition: transform 0.5s ease; }
+  .cat[data-state='sleep'] .c-zzz text { animation: c-z 3.2s ease-in-out infinite; }
+  .cat[data-state='sleep'] .c-zzz text + text { animation-delay: 1.6s; }
+  @keyframes c-head-sleep {
+    0%, 100% { transform: translateY(4px) rotate(-7deg); }
+    50% { transform: translateY(5px) rotate(-7deg); }
+  }
+  @keyframes c-z {
+    0% { opacity: 0; transform: translate(0, 4px); }
+    30% { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(6px, -10px); }
+  }
+  .c-tail-sway, .c-eye-wrap { transition: transform 0.4s cubic-bezier(0.3, 0, 0.2, 1); }
+
+  /* Paused when offscreen / tab hidden (set by the brain). */
+  .cat[data-paused] :global(*) { animation-play-state: paused !important; }
+
+  /* Reduced motion: no loops, only blinking (handled in JS) and static poses. */
+  @media (prefers-reduced-motion: reduce) {
+    .c-breath, .c-head-pose, .c-tail-sway,
+    .cat[data-state='sleep'] .c-head-pose,
+    .cat[data-state='sleep'] .c-zzz text { animation: none !important; }
+    .cat[data-state='sleep'] .c-zzz text { opacity: 0.8; }
+    .cat[data-state='sleep'] .c-head-pose { transform: translateY(4px) rotate(-7deg); }
+  }
+</style>

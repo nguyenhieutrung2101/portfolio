@@ -1,0 +1,72 @@
+---
+/** A record sleeve with its disc tucked behind. Used for composers. */
+import type { Composer } from '../lib/library';
+import { ERA_LABEL, lifespan, shortName } from '../lib/library';
+
+interface Props {
+  composer: Composer;
+  size?: 'md' | 'lg';
+  count?: number;
+}
+const { composer, size = 'md', count } = Astro.props;
+---
+
+<span class:list={['sleeve-wrap', `sleeve-${size}`]}>
+  <span class="disc" aria-hidden="true"><span class="disc-label"></span></span>
+  <span class:list={['sleeve', `bg-${composer.data.sleeveColor}`]} transition:name={`sleeve-${composer.id}`}>
+    <span class="sleeve-top">{ERA_LABEL[composer.data.era]}</span>
+    <span class="sleeve-name">{shortName(composer)}</span>
+    <span class="sleeve-bottom">
+      <span>{lifespan(composer)}</span>
+      {count !== undefined && <span>{count} bản</span>}
+    </span>
+  </span>
+</span>
+
+<style>
+  .sleeve-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 0.92;
+  }
+  .sleeve {
+    position: absolute;
+    inset: 0 18% 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px;
+    border: var(--border);
+    box-shadow: var(--shadow);
+  }
+  .sleeve-top, .sleeve-bottom { font-size: 0.625rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  .sleeve-bottom { display: flex; justify-content: space-between; gap: 6px; }
+  .sleeve-name { font: 500 clamp(1.25rem, 5.5vw, 1.75rem) / 1 var(--font-serif); letter-spacing: -0.01em; }
+  .sleeve-lg .sleeve-name { font-size: clamp(1.75rem, 8vw, 2.5rem); }
+
+  .disc {
+    position: absolute;
+    top: 6%;
+    right: 0;
+    width: 82%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle, var(--disc) 0 7px, var(--disc-groove) 8px 9px);
+    transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .disc-label {
+    position: absolute;
+    inset: 36%;
+    border-radius: 50%;
+    border: 2px solid var(--disc);
+    background: var(--yellow);
+  }
+
+  .bg-green { background: var(--green); }
+  .bg-yellow { background: var(--yellow); }
+  .bg-pink { background: var(--pink); }
+  .bg-purple { background: var(--purple); }
+  .bg-blue { background: var(--blue); }
+  .bg-sand { background: var(--sand); }
+</style>

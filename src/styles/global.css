@@ -1,0 +1,161 @@
+@import '@fontsource-variable/newsreader/wght.css';
+
+/* ── Tokens ─────────────────────────────────────────────────────────────
+   Palette carried over from the mockup. Defined once for light and once for
+   dark (not light-dark(), so iOS < 17.5 still gets colours). */
+:root {
+  color-scheme: light dark;
+  --ink: #22261f;
+  --paper: #fff9eb;
+  --soft: #f0ecdc;
+  --muted: #565b4c;
+  --yellow: #f5db61;
+  --green: #bfd2b6;
+  --pink: #efb4a7;
+  --purple: #d5c9e8;
+  --blue: #bcd3e3;
+  --sand: #e8cfa4;
+  --cat-orange: #edb76a;
+  --cat-ink: #252720;
+  --disc: #252720;
+  --disc-groove: #4c5145;
+
+  --font-sans: ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
+
+  --radius: 4px;
+  --border: 2px solid var(--ink);
+  --shadow: 3px 3px 0 var(--ink);
+  --shadow-lg: 5px 5px 0 var(--ink);
+
+  --gutter: 16px;
+  --header-h: 52px;
+  --tabbar-h: 58px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --guide-visible: 64px; /* updated by the guide sheet when its height changes */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f4eedb;
+    --paper: #242821;
+    --soft: #343a30;
+    --muted: #c4c7b6;
+    --yellow: #75651e;
+    --green: #486247;
+    --pink: #774f46;
+    --purple: #594c6c;
+    --blue: #3f5a6e;
+    --sand: #6e5a38;
+    --cat-orange: #daa353;
+    --cat-ink: #151b12;
+    --disc: #151b12;
+    --disc-groove: #404735;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root { --muted: var(--ink); }
+}
+
+/* ── Base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1rem/1.55 var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body { margin: 0; min-height: 100dvh; background: var(--paper); }
+
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-weight: 500; text-wrap: balance; }
+p { text-wrap: pretty; }
+
+a { color: inherit; }
+
+img, svg { display: block; max-width: 100%; }
+
+button {
+  font: inherit;
+  color: inherit;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+:focus-visible { outline: 3px dashed var(--ink); outline-offset: 3px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ── Shared type ────────────────────────────────────────────────────── */
+.kicker {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-title { margin-bottom: 20px; }
+.page-title .kicker { margin-bottom: 10px; }
+.page-title h1 {
+  font-size: clamp(1.875rem, 1.4rem + 2vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  margin-bottom: 10px;
+}
+.page-title p { font-size: 0.875rem; color: var(--muted); max-width: 34em; }
+
+.serif { font-family: var(--font-serif); }
+
+.section-label {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  border-top: 1.5px solid var(--ink);
+  padding-top: 12px; margin: 28px 0 12px;
+}
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 8px 14px;
+  border: var(--border); border-radius: var(--radius);
+  background: var(--paper); box-shadow: var(--shadow);
+  font-size: 0.875rem; text-decoration: none;
+}
+.btn-quiet { box-shadow: none; background: var(--soft); }
+
+.chip {
+  min-height: 36px; padding: 4px 12px;
+  border: 1.5px solid var(--ink); border-radius: 999px;
+  background: var(--paper); font-size: 0.8125rem;
+}
+.chip[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover, .chip:hover { background: var(--soft); }
+  .chip[aria-pressed='true']:hover { background: var(--ink); }
+}
+
+/* Elements given press feedback only carry a transform while pressed; see
+   scripts/press.ts. Nothing sits on its own compositor layer at rest. */
+[data-pressing] { will-change: transform; }
+
+/* ── View transitions (Astro ClientRouter) ──────────────────────────── */
+@keyframes vt-out-left { to { opacity: 0; transform: translate3d(-24px, 0, 0); } }
+@keyframes vt-in-right { from { opacity: 0; transform: translate3d(24px, 0, 0); } }
+@keyframes vt-out-right { to { opacity: 0; transform: translate3d(24px, 0, 0); } }
+@keyframes vt-in-left { from { opacity: 0; transform: translate3d(-24px, 0, 0); } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}

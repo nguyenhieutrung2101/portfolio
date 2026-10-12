@@ -1,0 +1,379 @@
+---
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { formatDate, getShelf, spineLook } from '../../lib/library';
+
+const shelf = await getShelf();
+const books = await Promise.all(
+  shelf.map(async (book) => ({ book, look: spineLook(book), Note: (await render(book)).Content })),
+);
+const STATUS = { reading: 'Đang đọc', read: 'Đã đọc', want: 'Muốn đọc' } as const;
+const bookLine = (b: (typeof shelf)[number]) =>
+  b.data.catLine ??
+  (b.data.status === 'reading'
+    ? `"${b.data.title}". Trung đang đọc dở cuốn này.`
+    : b.data.status === 'want'
+      ? `"${b.data.title}". Cuốn này Trung mới để dành, chưa đọc.`
+      : `"${b.data.title}" của ${b.data.author}. Kéo tờ ghi chú xuống để cất sách lại.`);
+---
+
+<Base
+  title="Giá sách"
+  catLine="Giá sách của Trung không chia ngăn đâu, cuốn nào mới về thì cứ xếp vào chỗ trống. Chạm một gáy sách để lấy xuống."
+>
+  <div class="page-title">
+    <span class="kicker">Ngăn / Sách</span>
+    <h1>Giá sách.</h1>
+    <p>Không chia thể loại. Cuốn nào mới thì cứ xếp vào chỗ trống. Chạm một gáy sách để lấy xuống.</p>
+  </div>
+
+  <ul class="shelf" data-shelf>
+    {
+      books.map(({ book, look }) => (
+        <li class="slot">
+          <button
+            type="button"
+            class:list={['spine', `bg-${look.colour}`, `band-${look.band}`]}
+            style={`--h:${look.height}px;--w:${look.width}px`}
+            id={book.id}
+            data-book={book.id}
+            data-line={bookLine(book)}
+            aria-haspopup="dialog"
+            aria-label={`${book.data.title}, ${book.data.author}`}
+          >
+            <span class="spine-title">{book.data.title}</span>
+            <span class="spine-author" aria-hidden="true">
+              {book.data.author.split(' ').at(-1)}
+            </span>
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    books.map(({ book, look, Note }) => (
+      <template data-book-detail={book.id}>
+        <div class="book">
+          <div class:list={['cover', `bg-${look.colour}`]} aria-hidden="true">
+            <span>{book.data.author}</span>
+            <strong>{book.data.title}</strong>
+          </div>
+          <div class="book-text">
+            <span class="kicker">
+              {STATUS[book.data.status]} · thêm vào {formatDate(book.data.addedAt)}
+            </span>
+            <h2 class="serif" data-book-title>
+              {book.data.title}
+            </h2>
+            <p class="author">{book.data.author}</p>
+          </div>
+        </div>
+        {book.data.quote && <blockquote class="serif">“{book.data.quote}”</blockquote>}
+        <div class="prose">
+          <Note />
+        </div>
+      </template>
+    ))
+  }
+
+  <dialog class="book-sheet" data-book-sheet aria-labelledby="book-sheet-title">
+    <div class="scrim" data-scrim></div>
+    <div class="sheet-panel" data-sheet-panel>
+      <div class="sheet-handle" data-sheet-handle>
+        <span class="grabber" aria-hidden="true"></span>
+        <span class="kicker">Ghi chú bên lề</span>
+        <button type="button" class="sheet-close" data-sheet-close aria-label="Cất sách lại">Đóng</button>
+      </div>
+      <div class="sheet-body" data-sheet-body id="book-sheet-title"></div>
+    </div>
+  </dialog>
+</Base>
+
+<style>
+  /* Each row of the shelf is a fixed 196px band: 182px of air, then a board.
+     The boards are one repeating background, so they line up with however
+     many rows the books wrap into. */
+  .shelf {
+    --row: 196px;
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0 6px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    column-gap: 3px;
+    background: linear-gradient(
+        to bottom,
+        transparent 182px,
+        var(--ink) 182px 184px,
+        var(--soft) 184px 194px,
+        var(--ink) 194px 196px
+      )
+      0 0 / 100% var(--row) repeat-y;
+  }
+  .slot { height: var(--row); display: flex; align-items: flex-end; padding-bottom: 14px; }
+
+  .spine {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: var(--w);
+    height: var(--h);
+    padding: 10px 2px 8px;
+    border: var(--border);
+    border-bottom: 0;
+    border-radius: 3px 3px 0 0;
+    overflow: hidden;
+  }
+  .spine-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font: 500 0.78rem/1.08 var(--font-serif);
+    overflow: hidden;
+    max-height: calc(var(--h) - 52px);
+    max-width: calc(var(--w) - 8px);
+    text-align: end;
+  }
+  .spine-author { font-size: 0.5625rem; letter-spacing: 0.04em; text-transform: uppercase; writing-mode: vertical-rl; transform: rotate(180deg); }
+  .band-1::before, .band-2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 6px;
+    height: 4px;
+    border-block: 1.5px solid var(--ink);
+  }
+  .band-2::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 26px;
+    height: 4px;
+    border-block: 1.5px solid var(--ink);
+  }
+
+  .bg-green { background-color: var(--green); }
+  .bg-yellow { background-color: var(--yellow); }
+  .bg-pink { background-color: var(--pink); }
+  .bg-purple { background-color: var(--purple); }
+  .bg-blue { background-color: var(--blue); }
+  .bg-sand { background-color: var(--sand); }
+
+  /* ── Book sheet ─────────────────────────────────────────────────────── */
+  .book-sheet {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    /* clip, not hidden: focusing the close button must never scroll the
+       dialog to reveal a panel that is still below the screen. */
+    overflow: clip;
+  }
+  .book-sheet::backdrop { background: transparent; }
+  .scrim { position: absolute; inset: 0; background: rgb(20 22 18 / 45%); opacity: 0; }
+  .sheet-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: 560px;
+    max-height: calc(100dvh - 48px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    color: var(--ink);
+    border: var(--border);
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+  }
+  /* Extends below the edge so an upward drag never shows a gap. */
+  .sheet-panel::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 100%;
+    height: 40vh;
+    background: var(--paper);
+    border-inline: var(--border);
+  }
+  .sheet-handle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 8px 4px 18px;
+    touch-action: none;
+    cursor: grab;
+  }
+  .grabber {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 2px;
+    background: var(--ink);
+    opacity: 0.35;
+  }
+  .sheet-close {
+    min-height: 44px;
+    min-width: 44px;
+    border: 0;
+    background: none;
+    font-size: 0.8125rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .sheet-body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px 18px calc(28px + var(--safe-bottom));
+  }
+  .sheet-body :global(.book) { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: end; }
+  .sheet-body :global(.cover) {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 132px;
+    padding: 10px 8px;
+    border: var(--border);
+    border-left-width: 6px;
+    box-shadow: var(--shadow);
+    font-size: 0.625rem;
+    line-height: 1.3;
+  }
+  .sheet-body :global(.cover strong) { font: 500 1rem/1.15 var(--font-serif); }
+  .sheet-body :global(h2) { font-size: 1.5rem; line-height: 1.15; margin: 6px 0 2px; }
+  .sheet-body :global(.author) { font-size: 0.875rem; color: var(--muted); }
+  .sheet-body :global(blockquote) {
+    margin: 20px 0 0;
+    padding: 2px 0 2px 14px;
+    border-left: 4px solid var(--ink);
+    font-size: 1.125rem;
+    line-height: 1.45;
+  }
+  .sheet-body :global(.prose) { margin-top: 16px; font-size: 0.9375rem; }
+  .sheet-body :global(.prose em) { color: var(--muted); }
+
+  @media (min-width: 768px) {
+    .sheet-panel { bottom: 24px; border-bottom: var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); }
+    .sheet-panel::after { display: none; }
+    .sheet-body { padding-bottom: 28px; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .scrim { background: rgb(20 22 18 / 70%); }
+  }
+</style>
+
+<script>
+  import { Spring, clamp, reducedMotion } from '../../scripts/spring';
+  import { createSheet } from '../../scripts/sheet';
+  import { say } from '../../scripts/cat-bus';
+
+  document.addEventListener('astro:page-load', () => {
+    const shelf = document.querySelector<HTMLElement>('[data-shelf]');
+    const maybeDialog = document.querySelector<HTMLDialogElement>('[data-book-sheet]');
+    if (!shelf || !maybeDialog) return;
+    const dialog = maybeDialog;
+    const panel = dialog.querySelector<HTMLElement>('[data-sheet-panel]')!;
+    const handle = dialog.querySelector<HTMLElement>('[data-sheet-handle]')!;
+    const body = dialog.querySelector<HTMLElement>('[data-sheet-body]')!;
+    const scrim = dialog.querySelector<HTMLElement>('[data-scrim]')!;
+    const spines = Array.from(shelf.querySelectorAll<HTMLButtonElement>('[data-book]'));
+
+    // Spines rise when taken and settle back when returned.
+    const lift = new Map<HTMLElement, Spring>();
+    const liftOf = (spine: HTMLElement) => {
+      let s = lift.get(spine);
+      if (!s) {
+        s = new Spring(0, (v) => (spine.style.transform = Math.abs(v) < 0.05 ? '' : `translate3d(0, ${-v}px, 0)`), {
+          response: 0.34,
+          precision: 0.05,
+        });
+        lift.set(spine, s);
+      }
+      return s;
+    };
+
+    let current: HTMLElement | null = null;
+    let placing = false;
+    const height = () => panel.offsetHeight + 24;
+
+    const sheet = createSheet({
+      panel,
+      handle,
+      initial: 2000,
+      snaps: () => [0, height()],
+      paint: (y) => {
+        scrim.style.opacity = String(clamp(1 - y / height()));
+      },
+      onSettle: (y) => {
+        if (!placing && y >= height() - 1 && dialog.open) finishClose();
+      },
+    });
+
+    function open(spine: HTMLElement) {
+      if (current && current !== spine) liftOf(current).to(0);
+      current = spine;
+      const tpl = document.querySelector<HTMLTemplateElement>(`template[data-book-detail="${spine.dataset.book}"]`);
+      if (!tpl) return;
+      body.replaceChildren(tpl.content.cloneNode(true));
+      body.scrollTop = 0;
+      liftOf(spine).to(16, { velocity: reducedMotion ? 0 : 120, damping: 0.75 });
+      if (!dialog.open) {
+        dialog.showModal();
+        // Start from just below the screen, from the current value if it's
+        // still on its way out.
+        placing = true;
+        if (!sheet.spring.moving) sheet.spring.set(height());
+        placing = false;
+      }
+      sheet.snapTo(0);
+      history.replaceState(history.state, '', `#${spine.dataset.book}`);
+      say(spine.dataset.line ?? '', { look: spine });
+    }
+
+    function close() {
+      sheet.snapTo(height());
+    }
+
+    function finishClose() {
+      dialog.close();
+      if (current) {
+        liftOf(current).to(0);
+        current.focus({ preventScroll: true });
+      }
+      history.replaceState(history.state, '', location.pathname);
+    }
+
+    spines.forEach((spine) => spine.addEventListener('click', () => open(spine)));
+    scrim.addEventListener('click', close);
+    dialog.querySelector('[data-sheet-close]')!.addEventListener('click', close);
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      close();
+    });
+
+    const fromHash = spines.find((s) => `#${s.dataset.book}` === decodeURIComponent(location.hash));
+    if (fromHash) {
+      fromHash.scrollIntoView({ block: 'center' });
+      open(fromHash);
+    }
+  });
+</script>

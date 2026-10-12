@@ -1,0 +1,280 @@
+---
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Sleeve from '../../components/Sleeve.astro';
+import { ERA_LABEL, getComposers, getWorks, lifespan, listenLinks, shortName, type Composer } from '../../lib/library';
+
+export async function getStaticPaths() {
+  const composers = await getComposers();
+  return composers.map((composer) => ({ params: { composer: composer.id }, props: { composer } }));
+}
+
+const { composer } = Astro.props as { composer: Composer };
+const works = await getWorks(composer.id);
+const { Content: About } = await render(composer);
+const rendered = await Promise.all(works.map(async (w) => ({ work: w, Note: (await render(w)).Content })));
+const name = shortName(composer);
+const catLine = composer.data.catLine ?? `Đây là ngăn của ${name}. Lướt ngang để rút từng đĩa ra, đĩa nào nằm giữa là đĩa đang nghe.`;
+const workLine = (w: (typeof works)[number]) =>
+  w.data.catLine ??
+  `${w.data.title}${w.data.recording ? `, bản thu của ${w.data.recording.performer}` : ''}. ${
+    w.data.favorite ? 'Bản này Trung nghe lại nhiều lắm.' : 'Bấm nút bên dưới để nghe thử nhé.'
+  }`;
+---
+
+<Base title={composer.data.name} description={composer.data.intro} catLine={catLine}>
+  <a class="back" href="/nhac/" data-press>← Tủ đĩa</a>
+
+  <header class="composer">
+    <div class="composer-sleeve"><Sleeve composer={composer} size="lg" /></div>
+    <div class="composer-text">
+      <span class="kicker">{ERA_LABEL[composer.data.era]} · {lifespan(composer)}</span>
+      <h1>{composer.data.name}</h1>
+      <p class="serif intro">{composer.data.intro}</p>
+    </div>
+  </header>
+  <div class="prose"><About /></div>
+
+  <section class="records" data-records aria-label={`Các đĩa của ${name}`}>
+    <div class="section-label">
+      <span class="kicker">Các đĩa · {works.length}</span>
+      <div class="rack-controls">
+        <button type="button" class="step" data-rack-step="-1" aria-label="Đĩa trước">←</button>
+        <span class="count" data-rack-count aria-live="polite">1 / {works.length}</span>
+        <button type="button" class="step" data-rack-step="1" aria-label="Đĩa tiếp theo">→</button>
+      </div>
+    </div>
+
+    <div class="rack" data-rack data-scroll-x tabindex="-1">
+      {
+        works.map((w, i) => (
+          <button
+            type="button"
+            class="record"
+            data-record={w.id}
+            data-line={workLine(w)}
+            aria-pressed={i === 0 ? 'true' : 'false'}
+            aria-label={`${w.data.title}${w.data.catalogue ? `, ${w.data.catalogue}` : ''}`}
+          >
+            <span class="record-stage">
+              <span class="rdisc" data-record-disc aria-hidden="true">
+                <span class="rdisc-spin" data-record-spin>
+                  <span class="rdisc-label" />
+                </span>
+              </span>
+              <span class:list={['rsleeve', `bg-${composer.data.sleeveColor}`]} data-record-sleeve>
+                <span class="rsleeve-small">{w.data.catalogue ?? name}</span>
+                <span class="rsleeve-title">{w.data.title}</span>
+                <span class="rsleeve-small">{w.data.recording?.performer ?? name}</span>
+              </span>
+            </span>
+            <span class="record-label">
+              {w.data.favorite && <span aria-label="Yêu thích">♥ </span>}
+              {w.data.form ?? w.data.title}
+            </span>
+          </button>
+        ))
+      }
+    </div>
+
+    <div class="details" data-details>
+      {
+        rendered.map(({ work: w, Note }, i) => {
+          const links = listenLinks(w, composer);
+          return (
+            <article class:list={['detail', { 'is-active': i === 0 }]} id={w.id} data-work-detail={w.id}>
+              <span class="kicker">Đang nghe</span>
+              <h2 class="serif">{w.data.title}</h2>
+              <p class="meta">{[w.data.catalogue, w.data.form].filter(Boolean).join(' · ')}</p>
+              {w.data.recording && (
+                <p class="recording">
+                  Bản thu Trung chọn: <strong>{w.data.recording.performer}</strong>
+                  {w.data.recording.year && <span> ({w.data.recording.year})</span>}
+                  {w.data.recording.label && <span> · {w.data.recording.label}</span>}
+                </p>
+              )}
+              <div class="prose">
+                <Note />
+              </div>
+              <div class="listen" role="group" aria-label="Nghe ở đâu">
+                {links.map((l) => (
+                  <a class="btn" href={l.href} target="_blank" rel="noopener noreferrer" data-press>
+                    {l.direct ? 'Nghe trên' : 'Tìm trên'} {l.platform} <span aria-hidden="true">↗</span>
+                  </a>
+                ))}
+              </div>
+            </article>
+          );
+        })
+      }
+    </div>
+  </section>
+</Base>
+
+<style>
+  .back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin: -10px 0 8px;
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+
+  .composer { display: grid; grid-template-columns: minmax(0, 42%) 1fr; gap: 16px; align-items: end; }
+  .composer h1 { font-size: clamp(1.625rem, 1.2rem + 2vw, 2.25rem); line-height: 1.1; letter-spacing: -0.03em; margin: 8px 0; }
+  .intro { font-size: 1.0625rem; font-style: italic; color: var(--muted); }
+
+  .prose { font-size: 0.9375rem; margin-top: 16px; }
+  .prose :global(p + p) { margin-top: 0.8em; }
+  .prose :global(em) { color: var(--muted); }
+
+  .rack-controls { display: flex; align-items: center; gap: 6px; }
+  .step {
+    min-width: 40px;
+    min-height: 40px;
+    border: var(--border);
+    border-radius: 3px;
+    background: var(--soft);
+  }
+  .step:disabled { opacity: 0.35; cursor: default; }
+  .count { font-size: 0.75rem; min-width: 3.2em; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .rack {
+    --card: 172px;
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 18px calc(50% - var(--card) / 2) 8px;
+    outline: none;
+  }
+  .rack::-webkit-scrollbar { display: none; }
+
+  .record {
+    flex: 0 0 var(--card);
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    scroll-snap-align: center;
+  }
+  .record-stage { position: relative; display: block; width: 100%; aspect-ratio: 1 / 0.95; }
+  .rdisc {
+    position: absolute;
+    top: 6%;
+    left: 14%;
+    width: 80%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+  }
+  .rdisc-spin {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle, var(--disc) 0 7px, var(--disc-groove) 8px 9px);
+  }
+  .rdisc-label {
+    position: absolute;
+    inset: 35%;
+    border-radius: 50%;
+    border: 2px solid var(--disc);
+    background: var(--yellow);
+  }
+  /* A mark on the label, so you can actually see the record turning. */
+  .rdisc-label::after {
+    content: '';
+    position: absolute;
+    top: 12%;
+    left: 50%;
+    width: 3px;
+    height: 30%;
+    margin-left: -1.5px;
+    border-radius: 2px;
+    background: var(--disc);
+  }
+  .rsleeve {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80%;
+    height: 92%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 10px;
+    border: var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .rsleeve-small { font-size: 0.625rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  .rsleeve-title {
+    font: 500 1.125rem/1.08 var(--font-serif);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .record-label { display: block; padding: 8px 2px 0; font-size: 0.8125rem; }
+  .record[aria-pressed='true'] .record-label { font-weight: 600; }
+
+  .bg-green { background: var(--green); }
+  .bg-yellow { background: var(--yellow); }
+  .bg-pink { background: var(--pink); }
+  .bg-purple { background: var(--purple); }
+  .bg-blue { background: var(--blue); }
+  .bg-sand { background: var(--sand); }
+
+  .details { border-top: 1.5px solid var(--ink); margin-top: 8px; padding-top: 14px; }
+  .detail + .detail { margin-top: 32px; }
+  @media (scripting: enabled) {
+    .detail:not(.is-active) { display: none; }
+    .detail + .detail { margin-top: 0; }
+  }
+  .detail h2 { font-size: 1.5rem; line-height: 1.15; margin: 6px 0 4px; }
+  .meta { font-size: 0.8125rem; color: var(--muted); }
+  .recording { font-size: 0.875rem; margin-top: 10px; }
+  .listen { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .listen .btn { font-size: 0.8125rem; }
+
+  @media (min-width: 768px) {
+    .rack { --card: 196px; margin: 0; padding-inline: calc(50% - var(--card) / 2); }
+  }
+</style>
+
+<script>
+  import { initRack } from '../../scripts/rack';
+  import { crossfade } from '../../scripts/spring';
+  import { say } from '../../scripts/cat-bus';
+
+  document.addEventListener('astro:page-load', () => {
+    const root = document.querySelector<HTMLElement>('[data-records]');
+    if (!root) return;
+    const detailsEl = root.querySelector<HTMLElement>('[data-details]')!;
+    const details = Array.from(root.querySelectorAll<HTMLElement>('[data-work-detail]'));
+    const fade = crossfade(detailsEl);
+    let shown = details.findIndex((d) => d.classList.contains('is-active'));
+    let first = true;
+
+    initRack({
+      root,
+      onSelect(index, card) {
+        if (index !== shown) {
+          shown = index;
+          fade.replace(() => details.forEach((d, i) => d.classList.toggle('is-active', i === index)));
+          history.replaceState(history.state, '', `#${card.dataset.record}`);
+        }
+        // The page's own line is said on arrival; record lines after that.
+        if (first) {
+          first = false;
+          if (!location.hash) return;
+        }
+        say(card.dataset.line ?? '', { look: card });
+      },
+    });
+  });
+</script>

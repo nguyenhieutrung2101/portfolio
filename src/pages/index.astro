@@ -1,0 +1,178 @@
+---
+import Base from '../layouts/Base.astro';
+import Cat from '../components/Cat.astro';
+import { getCollection } from 'astro:content';
+import { getComposers, getShelf, spineLook, formatDate, shortName } from '../lib/library';
+
+const composers = await getComposers();
+const works = await getCollection('works');
+const shelf = await getShelf();
+const byId = new Map(composers.map((c) => [c.id, c]));
+
+const recent = [
+  ...works.map((w) => ({
+    date: w.data.addedAt,
+    kind: 'Nhạc',
+    title: w.data.title,
+    by: byId.get(w.data.composer.id) ? shortName(byId.get(w.data.composer.id)!) : '',
+    href: `/nhac/${w.data.composer.id}/#${w.id}`,
+  })),
+  ...shelf.map((b) => ({ date: b.data.addedAt, kind: 'Sách', title: b.data.title, by: b.data.author, href: `/sach/#${b.id}` })),
+]
+  .sort((a, b) => +b.date - +a.date)
+  .slice(0, 3);
+---
+
+<Base catLine="Chào cậu! Tớ là Mèo, trông góc này giúp Trung. Cậu muốn lục ngăn nào trước?">
+  <section class="scene" aria-label="Mèo trông nhà">
+    <span class="scene-tag">a small personal corner</span>
+    <Cat size="lg" />
+    <span class="scene-label">MÈO TRÔNG NHÀ</span>
+  </section>
+
+  <div class="page-title home-title">
+    <h1>Cậu vừa ghé<br />góc của Trung.</h1>
+    <p>Sách, nhạc và vài điều cậu ấy thích.</p>
+  </div>
+
+  <div class="drawers">
+    <a class="drawer drawer-music" href="/nhac/" data-press>
+      <span class="drawer-art" aria-hidden="true">
+        {
+          composers.slice(0, 3).map((c, i) => (
+            <span class:list={['mini-sleeve', `bg-${c.data.sleeveColor}`]} style={`--i:${i}`}>
+              {shortName(c)}
+            </span>
+          ))
+        }
+      </span>
+      <span class="kicker">Ngăn / Âm nhạc</span>
+      <strong>Tủ đĩa cổ điển</strong>
+      <span class="drawer-meta">{composers.length} nhà soạn nhạc · {works.length} bản</span>
+    </a>
+    <a class="drawer drawer-books" href="/sach/" data-press>
+      <span class="drawer-art drawer-spines" aria-hidden="true">
+        {
+          shelf.slice(0, 7).map((b) => {
+            const look = spineLook(b);
+            return <span class:list={['mini-spine', `bg-${look.colour}`]} style={`height:${look.height / 3.2}px;width:${look.width / 3.4}px`} />;
+          })
+        }
+      </span>
+      <span class="kicker">Ngăn / Sách</span>
+      <strong>Giá sách</strong>
+      <span class="drawer-meta">{shelf.length} cuốn</span>
+    </a>
+  </div>
+
+  {
+    recent.length > 0 && (
+      <>
+        <div class="section-label">
+          <span class="kicker">Vừa thêm vào</span>
+        </div>
+        <ul class="recent">
+          {recent.map((item) => (
+            <li>
+              <a href={item.href} data-press>
+                <span class="recent-kind">{item.kind}</span>
+                <span class="recent-title">
+                  {item.title}
+                  <small>{item.by}</small>
+                </span>
+                <time>{formatDate(item.date)}</time>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+
+  <Fragment slot="cat-choices">
+    <a class="guide-choice" href="/nhac/" data-press><span aria-hidden="true">♪</span> Đi nghe nhạc <span aria-hidden="true">↗</span></a>
+    <a class="guide-choice" href="/sach/" data-press><span aria-hidden="true">▤</span> Lục giá sách <span aria-hidden="true">↗</span></a>
+    <button type="button" class="guide-about" data-cat-about>Trung là người thế nào?</button>
+  </Fragment>
+</Base>
+
+<style>
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    height: 216px;
+    padding: 12px;
+    background: var(--green);
+    border: var(--border);
+    border-radius: var(--radius);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .scene-tag { font-size: 0.6875rem; letter-spacing: 0.05em; }
+  .scene-label { font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; }
+
+  .home-title { padding-top: 24px; }
+
+  .drawers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 12px;
+    border: var(--border);
+    border-radius: var(--radius);
+    background: var(--paper);
+    box-shadow: var(--shadow);
+    text-decoration: none;
+  }
+  .drawer strong { font-weight: 500; font-size: 1.0625rem; line-height: 1.25; }
+  .drawer .kicker { font-size: 0.625rem; margin-top: 10px; color: var(--muted); }
+  .drawer-meta { font-size: 0.75rem; color: var(--muted); }
+
+  .drawer-art { position: relative; display: block; height: 72px; }
+  .mini-sleeve {
+    position: absolute;
+    bottom: 0;
+    left: calc(var(--i) * 22px);
+    width: 64px;
+    height: 64px;
+    padding: 5px;
+    border: 1.5px solid var(--ink);
+    font: 500 0.6875rem/1 var(--font-serif);
+    transform: rotate(calc((var(--i) - 1) * 4deg));
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .drawer-spines { display: flex; align-items: flex-end; gap: 2px; border-bottom: 3px solid var(--ink); }
+  .mini-spine { display: block; border: 1.5px solid var(--ink); border-bottom: 0; }
+
+  .bg-green { background: var(--green); }
+  .bg-yellow { background: var(--yellow); }
+  .bg-pink { background: var(--pink); }
+  .bg-purple { background: var(--purple); }
+  .bg-blue { background: var(--blue); }
+  .bg-sand { background: var(--sand); }
+
+  .recent { list-style: none; margin: 0; padding: 0; }
+  .recent a {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    min-height: 48px;
+    padding: 10px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+    text-decoration: none;
+  }
+  .recent-kind { font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .recent-title { font-family: var(--font-serif); font-size: 1.0625rem; line-height: 1.3; min-width: 0; }
+  .recent-title small { display: block; font-family: var(--font-sans); font-size: 0.75rem; color: var(--muted); }
+  .recent time { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  @media (min-width: 768px) {
+    .scene { height: 260px; }
+    .scene :global(.cat-lg) { width: 160px; }
+  }
+</style>

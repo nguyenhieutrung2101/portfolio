@@ -1,0 +1,230 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import GuideSheet from '../components/GuideSheet.astro';
+import { lastUpdated, formatDate } from '../lib/library';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** What Mèo says when this page opens. */
+  catLine: string;
+}
+
+const { title, description = 'Góc nhỏ của Trung: nhạc cổ điển, sách, và một con mèo trông nhà.', catLine } = Astro.props;
+const pageTitle = title ? `${title} · Trung's Corner` : "Trung's Corner";
+const choicesHtml = Astro.slots.has('cat-choices') ? await Astro.slots.render('cat-choices') : '';
+const path = Astro.url.pathname;
+const section = path.startsWith('/nhac') ? 'music' : path.startsWith('/sach') ? 'books' : path === '/' ? 'home' : '';
+const updated = await lastUpdated();
+
+const nav = [
+  { key: 'home', href: '/', label: 'Trang đầu', icon: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z' },
+  { key: 'music', href: '/nhac/', label: 'Nhạc', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6.5 12a5.5 5.5 0 0 1 5.5-5.5' },
+  { key: 'books', href: '/sach/', label: 'Sách', icon: 'M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2zm20 0h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z' },
+];
+
+// Page slide: forward/back follows the order of the sections, so a page always
+// leaves the way it came in.
+const slide = {
+  forwards: {
+    old: { name: 'vt-out-left', duration: '0.2s', easing: 'cubic-bezier(0.4, 0, 1, 1)', fillMode: 'both' },
+    new: { name: 'vt-in-right', duration: '0.34s', easing: 'cubic-bezier(0.05, 0.7, 0.1, 1)', fillMode: 'both' },
+  },
+  backwards: {
+    old: { name: 'vt-out-right', duration: '0.2s', easing: 'cubic-bezier(0.4, 0, 1, 1)', fillMode: 'both' },
+    new: { name: 'vt-in-left', duration: '0.34s', easing: 'cubic-bezier(0.05, 0.7, 0.1, 1)', fillMode: 'both' },
+  },
+};
+---
+
+<!doctype html>
+<html lang="vi" transition:animate="none">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#fff9eb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#242821" media="(prefers-color-scheme: dark)" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <ClientRouter />
+  </head>
+  <body data-section={section}>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/" data-press>TRUNG'S CORNER</a>
+        <nav class="topnav" aria-label="Các ngăn">
+          {
+            nav.map((item) => (
+              <a href={item.href} aria-current={section === item.key ? 'page' : undefined} data-press>
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+    </header>
+
+    <div class="frame">
+      <main class="main" transition:name="main" transition:animate={slide}>
+        <slot />
+        <footer class="footer">
+          Trung's Corner · cập nhật {formatDate(updated)}
+        </footer>
+        <template data-cat-page data-line={catLine} set:html={choicesHtml} />
+      </main>
+      <GuideSheet line={catLine} choicesHtml={choicesHtml} />
+    </div>
+
+    <nav class="tabbar" aria-label="Các ngăn">
+      {
+        nav.map((item) => (
+          <a href={item.href} aria-current={section === item.key ? 'page' : undefined} data-press>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d={item.icon} />
+            </svg>
+            <span>{item.label}</span>
+          </a>
+        ))
+      }
+    </nav>
+  </body>
+</html>
+
+<style>
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    height: var(--header-h);
+    border-bottom: var(--border);
+    /* A translucent material: content scrolls under it. */
+    background: color-mix(in srgb, var(--paper) 84%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .topbar { background: var(--paper); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  .topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-decoration: none;
+  }
+  .topnav { display: none; gap: 4px; }
+  .topnav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1.5px solid transparent;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+  .topnav a[aria-current='page'] { border-color: var(--ink); background: var(--yellow); }
+
+  .frame {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 20px var(--gutter) 0;
+  }
+  .main {
+    min-width: 0;
+    padding-bottom: calc(var(--guide-visible) + var(--tabbar-h) + var(--safe-bottom) + 24px);
+  }
+  .footer {
+    margin-top: 40px;
+    padding-top: 12px;
+    border-top: 1.5px dashed color-mix(in srgb, var(--ink) 40%, transparent);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    height: calc(var(--tabbar-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: var(--paper); /* opaque: the guide sheet tucks behind it */
+    border-top: var(--border);
+  }
+  .tabbar a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 0.6875rem;
+    text-decoration: none;
+  }
+  .tabbar svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .tabbar a[aria-current='page'] { background: var(--yellow); }
+  .tabbar a + a { border-left: 1.5px solid var(--ink); }
+
+  @media (min-width: 768px) {
+    .topnav { display: flex; }
+    .tabbar { display: none; }
+    .frame {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 32px;
+      padding-top: 32px;
+    }
+    .main { padding-bottom: 48px; }
+  }
+  @media (min-width: 1100px) {
+    .frame { grid-template-columns: minmax(0, 1fr) 320px; gap: 48px; }
+  }
+</style>
+
+<script>
+  import { installPress } from '../scripts/press';
+  import { wakeCats } from '../scripts/cat-brain';
+
+  installPress();
+
+  // Section order decides slide direction: home → music → composer → books.
+  const rank = (path: string) => {
+    if (path.startsWith('/sach')) return 3;
+    if (/^\/nhac\/.+/.test(path)) return 2;
+    if (path.startsWith('/nhac')) return 1;
+    return 0;
+  };
+  document.addEventListener('astro:before-preparation', (event) => {
+    const from = rank(event.from.pathname);
+    const to = rank(event.to.pathname);
+    if (from !== to) event.direction = to > from ? 'forward' : 'back';
+  });
+
+  document.addEventListener('astro:page-load', () => wakeCats());
+</script>

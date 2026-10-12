@@ -1,0 +1,184 @@
+---
+import Base from '../../layouts/Base.astro';
+import Sleeve from '../../components/Sleeve.astro';
+import { getCollection } from 'astro:content';
+import { ERA_LABEL, ERA_ORDER, formatDate, getComposers, getRecentWorks, shortName } from '../../lib/library';
+
+const composers = await getComposers();
+const works = await getCollection('works');
+const recent = await getRecentWorks(5);
+const counts = new Map<string, number>();
+for (const w of works) counts.set(w.data.composer.id, (counts.get(w.data.composer.id) ?? 0) + 1);
+const byId = new Map(composers.map((c) => [c.id, c]));
+const eras = ERA_ORDER.filter((era) => composers.some((c) => c.data.era === era));
+---
+
+<Base
+  title="Tủ đĩa cổ điển"
+  catLine="Trung đang gom dần một tủ đĩa nhạc cổ điển. Mỗi bìa là một nhà soạn nhạc, chạm vào để mở ngăn của người đó."
+>
+  <div class="page-title">
+    <span class="kicker">Ngăn / Âm nhạc</span>
+    <h1>Tủ đĩa cổ điển.</h1>
+    <p>Mỗi bìa là một nhà soạn nhạc. Trung thêm dần mỗi khi nghe được một bản đáng giữ lại.</p>
+  </div>
+
+  {
+    eras.length > 1 && (
+      <div class="eras" role="group" aria-label="Lọc theo thời kỳ" data-scroll-x>
+        <button type="button" class="chip" data-era="all" aria-pressed="true">
+          Tất cả
+        </button>
+        {eras.map((era) => (
+          <button type="button" class="chip" data-era={era} aria-pressed="false">
+            {ERA_LABEL[era]}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  <ul class="crate" data-crate>
+    {
+      composers.map((c) => (
+        <li data-era={c.data.era} data-crate-item>
+          <a href={`/nhac/${c.id}/`} data-press aria-label={`${c.data.name}, ${counts.get(c.id) ?? 0} bản`}>
+            <Sleeve composer={c} count={counts.get(c.id) ?? 0} />
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    recent.length > 0 && (
+      <>
+        <div class="section-label">
+          <span class="kicker">Mới thêm vào</span>
+        </div>
+        <ol class="recent">
+          {recent.map((w) => {
+            const c = byId.get(w.data.composer.id);
+            return (
+              <li>
+                <a href={`/nhac/${w.data.composer.id}/#${w.id}`} data-press>
+                  <span class="recent-title">
+                    {w.data.title}
+                    <small>
+                      {c ? shortName(c) : ''}
+                      {w.data.catalogue ? ` · ${w.data.catalogue}` : ''}
+                    </small>
+                  </span>
+                  <time>{formatDate(w.data.addedAt)}</time>
+                </a>
+              </li>
+            );
+          })}
+        </ol>
+      </>
+    )
+  }
+</Base>
+
+<style>
+  .eras {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    margin: 0 calc(-1 * var(--gutter)) 18px;
+    padding: 2px var(--gutter) 6px;
+    scrollbar-width: none;
+  }
+  .eras::-webkit-scrollbar { display: none; }
+  .eras .chip { flex: none; }
+
+  .crate {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 16px;
+  }
+  .crate a { display: block; text-decoration: none; }
+  .crate li[hidden] { display: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .crate a:hover :global(.disc) { transform: translateX(10%) rotate(40deg); }
+  }
+  @media (min-width: 560px) {
+    .crate { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .recent { list-style: none; margin: 0; padding: 0; }
+  .recent a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+    text-decoration: none;
+  }
+  .recent-title { font-family: var(--font-serif); font-size: 1.0625rem; line-height: 1.3; }
+  .recent-title small { display: block; font-family: var(--font-sans); font-size: 0.75rem; color: var(--muted); }
+  .recent time { flex: none; font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+</style>
+
+<script>
+  import { Spring } from '../../scripts/spring';
+
+  // Era filter. Cards that stay slide from where they were to where they now
+  // are (FLIP, independent X/Y springs); cards that appear fade and grow in.
+  document.addEventListener('astro:page-load', () => {
+    const crate = document.querySelector<HTMLElement>('[data-crate]');
+    if (!crate) return;
+    const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-era]')).filter((el) => el.tagName === 'BUTTON');
+    const items = Array.from(crate.querySelectorAll<HTMLElement>('[data-crate-item]'));
+    const motion = new Map<HTMLElement, { x: Spring; y: Spring; a: Spring }>();
+    const springsFor = (el: HTMLElement) => {
+      let m = motion.get(el);
+      if (!m) {
+        const paint = () => {
+          const { x, y, a } = m!;
+          const still = Math.abs(x.value) < 0.5 && Math.abs(y.value) < 0.5 && a.value > 0.999;
+          el.style.transform = still ? '' : `translate3d(${x.value}px, ${y.value}px, 0) scale(${0.92 + 0.08 * a.value})`;
+          el.style.opacity = a.value > 0.999 ? '' : String(a.value);
+        };
+        m = {
+          x: new Spring(0, paint, { response: 0.42, precision: 0.5 }),
+          y: new Spring(0, paint, { response: 0.42, precision: 0.5 }),
+          a: new Spring(1, paint, { response: 0.32, precision: 0.002 }),
+        };
+        motion.set(el, m);
+      }
+      return m;
+    };
+
+    for (const chip of chips) {
+      chip.addEventListener('click', () => {
+        const era = chip.dataset.era!;
+        chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+        // Read (first), write, read (last) — once per click, never per frame.
+        const first = new Map(items.filter((el) => !el.hidden).map((el) => [el, el.getBoundingClientRect()]));
+        items.forEach((el) => (el.hidden = era !== 'all' && el.dataset.era !== era));
+        for (const el of items) {
+          if (el.hidden) continue;
+          const m = springsFor(el);
+          const before = first.get(el);
+          const after = el.getBoundingClientRect();
+          if (before) {
+            // Account for any transform still in flight so nothing jumps.
+            m.x.shift(before.left - after.left);
+            m.y.shift(before.top - after.top);
+            m.x.to(0);
+            m.y.to(0);
+          } else {
+            m.a.set(0);
+            m.a.to(1);
+          }
+        }
+      });
+    }
+  });
+</script>

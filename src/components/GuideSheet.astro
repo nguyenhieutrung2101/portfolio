@@ -1,0 +1,296 @@
+---
+/**
+ * Mèo's dialogue panel. Persisted across navigations (transition:persist), so
+ * the little cat keeps moving while pages change underneath it.
+ *
+ * Phone: a bottom sheet above the tab bar. Drag the header (or tap "Thu gọn")
+ * to collapse it to just Mèo's head row.
+ * ≥ 768px: a sticky side panel.
+ */
+import Cat from './Cat.astro';
+
+interface Props {
+  line: string;
+  choicesHtml?: string;
+}
+const { line, choicesHtml = '' } = Astro.props;
+---
+
+<aside class="guide" data-guide aria-label="Mèo dẫn chuyện" transition:persist="guide" transition:name="guide" transition:animate="none">
+  <div class="guide-panel" data-guide-panel>
+    <div class="guide-head" data-guide-handle>
+      <span class="guide-grabber" aria-hidden="true"></span>
+      <Cat size="sm" />
+      <span class="guide-name">Mèo <span>· trông nhà</span></span>
+      <button type="button" class="guide-toggle" data-guide-toggle aria-expanded="true" aria-controls="guide-body">
+        <span data-guide-toggle-label>Thu gọn</span><span class="guide-unread" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="guide-body" id="guide-body" data-guide-body>
+      <div class="guide-content" data-guide-content>
+        <p class="guide-line" aria-live="polite" data-guide-line>{line}</p>
+        <div class="guide-choices" data-guide-choices hidden={!choicesHtml} set:html={choicesHtml} />
+      </div>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .guide { z-index: 20; }
+
+  .guide-panel {
+    position: relative;
+    background: var(--soft);
+    border: var(--border);
+    border-radius: 10px 10px 0 0;
+    border-bottom: 0;
+    padding-bottom: 12px;
+  }
+  /* The sheet continues below its visible edge (behind the tab bar), so when
+     it is lifted by a drag or a FLIP offset no gap ever opens underneath. */
+  .guide-panel::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 100%;
+    height: 50vh;
+    background: var(--soft);
+    border-inline: var(--border);
+  }
+
+  .guide-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 6px 0 10px;
+    touch-action: none; /* the head is the drag handle on phones */
+    cursor: grab;
+  }
+  .guide-panel[data-dragging] .guide-head { cursor: grabbing; }
+  .guide-grabber {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: var(--ink);
+    opacity: 0.35;
+  }
+  .guide-name { font-size: 0.8125rem; font-weight: 600; flex: 1; min-width: 0; }
+  .guide-name span { color: var(--muted); font-weight: 400; }
+
+  .guide-toggle {
+    position: relative;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 10px;
+    border: 0;
+    background: none;
+    font-size: 0.75rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .guide-unread {
+    position: absolute;
+    top: 10px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pink);
+    border: 1.5px solid var(--ink);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.2s, transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+  .guide[data-unread] .guide-unread { opacity: 1; transform: none; }
+
+  .guide-body { padding: 4px 14px 0; }
+  .guide-line { font-size: 0.9375rem; line-height: 1.5; min-height: 3em; }
+  .guide-choices { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+
+  .guide-choices :global(.guide-choice) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: var(--border);
+    border-radius: 3px;
+    background: var(--paper);
+    font-size: 0.875rem;
+    text-align: left;
+    text-decoration: none;
+  }
+  .guide-choices :global(.guide-choice span:last-child) { margin-left: auto; }
+  .guide-choices :global(.guide-about) {
+    align-self: flex-start;
+    min-height: 40px;
+    padding: 4px 2px;
+    border: 0;
+    background: none;
+    font-size: 0.8125rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* ── Phone: bottom sheet ────────────────────────────────────────────── */
+  @media (max-width: 767.98px) {
+    .guide {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: calc(var(--tabbar-h) + var(--safe-bottom));
+      max-width: 560px;
+      margin-inline: auto;
+    }
+    .guide-panel { box-shadow: 0 -6px 20px rgb(0 0 0 / 8%); }
+  }
+
+  /* ── Wider: sticky side panel ───────────────────────────────────────── */
+  @media (min-width: 768px) {
+    .guide { position: sticky; top: calc(var(--header-h) + 24px); align-self: start; }
+    .guide-panel { border-bottom: var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .guide-panel::after, .guide-grabber { display: none; }
+    .guide-head { touch-action: auto; cursor: default; padding-top: 6px; }
+    .guide-line { min-height: 0; }
+  }
+</style>
+
+<script>
+  import { createSheet } from '../scripts/sheet';
+  import { crossfade } from '../scripts/spring';
+  import { onSay, say } from '../scripts/cat-bus';
+  import { perkAll } from '../scripts/cat-brain';
+
+  const ABOUT_LINE =
+    'Trung thích học, khám phá và xây những thứ hữu ích. Phần còn lại cậu ấy kể qua nhạc và sách — cứ lục thử đi.';
+
+  const guide = document.querySelector<HTMLElement>('[data-guide]')!;
+  const panel = guide.querySelector<HTMLElement>('[data-guide-panel]')!;
+  const handle = guide.querySelector<HTMLElement>('[data-guide-handle]')!;
+  const toggle = guide.querySelector<HTMLButtonElement>('[data-guide-toggle]')!;
+  const toggleLabel = guide.querySelector<HTMLElement>('[data-guide-toggle-label]')!;
+  const body = guide.querySelector<HTMLElement>('[data-guide-body]')!;
+  const line = guide.querySelector<HTMLElement>('[data-guide-line]')!;
+  const choices = guide.querySelector<HTMLElement>('[data-guide-choices]')!;
+  const content = crossfade(guide.querySelector<HTMLElement>('[data-guide-content]')!);
+  const desktop = window.matchMedia('(min-width: 768px)');
+
+  let collapsed = false;
+  try {
+    collapsed = sessionStorage.getItem('guide-collapsed') === '1';
+  } catch {}
+
+  let panelH = panel.offsetHeight;
+  let peekH = handle.offsetHeight + 6;
+  const collapsedY = () => Math.max(0, panelH - peekH);
+
+  const publish = () => {
+    const visible = desktop.matches ? 0 : collapsed ? peekH : panelH;
+    document.documentElement.style.setProperty('--guide-visible', `${Math.round(visible)}px`);
+  };
+
+  const sheet = createSheet({
+    panel,
+    handle,
+    initial: !desktop.matches && collapsed ? collapsedY() : 0,
+    snaps: () => [0, collapsedY()],
+    enabled: () => !desktop.matches,
+    onSettle: (y) => {
+      if (desktop.matches) return;
+      const isCollapsed = y > 1;
+      if (isCollapsed !== collapsed) setCollapsed(isCollapsed, false);
+    },
+  });
+  sheet.spring.repaint();
+
+  function setCollapsed(next: boolean, animate = true) {
+    collapsed = next;
+    try {
+      sessionStorage.setItem('guide-collapsed', next ? '1' : '0');
+    } catch {}
+    toggleLabel.textContent = next ? 'Hỏi Mèo' : 'Thu gọn';
+    toggle.setAttribute('aria-expanded', String(!next));
+    body.inert = next;
+    if (!next) delete guide.dataset.unread;
+    if (desktop.matches) {
+      body.hidden = next;
+    } else {
+      body.hidden = false;
+      if (animate) sheet.snapTo(next ? collapsedY() : 0);
+    }
+    publish();
+  }
+
+  // Height changes (new line, choices appear) are absorbed with a FLIP offset:
+  // the sheet's top edge stays put, then glides to its new place.
+  new ResizeObserver(() => {
+    const nextH = panel.offsetHeight;
+    peekH = handle.offsetHeight + 6;
+    const delta = nextH - panelH;
+    panelH = nextH;
+    if (!desktop.matches && delta && !sheet.dragging) {
+      if (collapsed) {
+        if (sheet.spring.moving) sheet.spring.to(collapsedY());
+        else sheet.spring.set(collapsedY());
+      } else {
+        sheet.spring.shift(delta);
+        sheet.spring.to(0);
+      }
+    }
+    publish();
+  }).observe(panel);
+
+  desktop.addEventListener('change', () => {
+    body.hidden = desktop.matches && collapsed;
+    sheet.spring.set(!desktop.matches && collapsed ? collapsedY() : 0);
+    if (desktop.matches) panel.style.transform = '';
+    publish();
+  });
+
+  toggle.addEventListener('click', () => setCollapsed(!collapsed));
+  handle.addEventListener('click', (event) => {
+    // Tapping the empty part of the header also toggles (phone).
+    if (desktop.matches) return;
+    if ((event.target as Element).closest('button')) return;
+    setCollapsed(!collapsed);
+  });
+
+  choices.addEventListener('click', (event) => {
+    if ((event.target as Element).closest('[data-cat-about]')) say(ABOUT_LINE, { mood: 'perk' });
+  });
+
+  onSay(({ text }) => {
+    if (line.textContent === text) return;
+    content.replace(() => {
+      line.textContent = text;
+    });
+    if (collapsed) guide.dataset.unread = '';
+  });
+
+  // Each page leaves a <template data-cat-page> with Mèo's line and choices.
+  let firstLoad = true;
+  document.addEventListener('astro:page-load', () => {
+    const page = document.querySelector<HTMLTemplateElement>('template[data-cat-page]');
+    if (firstLoad) {
+      firstLoad = false;
+      setCollapsed(collapsed, false);
+      sheet.spring.set(!desktop.matches && collapsed ? collapsedY() : 0);
+      return;
+    }
+    perkAll();
+    if (!page) return;
+    content.replace(() => {
+      line.textContent = page.dataset.line ?? '';
+      choices.replaceChildren(page.content.cloneNode(true));
+      choices.hidden = !page.content.childElementCount;
+    });
+    if (collapsed) guide.dataset.unread = '';
+  });
+</script>
