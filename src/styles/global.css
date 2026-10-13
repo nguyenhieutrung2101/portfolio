@@ -148,13 +148,47 @@ button {
    scripts/press.ts. Nothing sits on its own compositor layer at rest. */
 [data-pressing] { will-change: transform; }
 
-/* ── View transitions (Astro ClientRouter) ──────────────────────────── */
-@keyframes vt-out-left { to { opacity: 0; transform: translate3d(-24px, 0, 0); } }
-@keyframes vt-in-right { from { opacity: 0; transform: translate3d(24px, 0, 0); } }
-@keyframes vt-out-right { to { opacity: 0; transform: translate3d(24px, 0, 0); } }
-@keyframes vt-in-left { from { opacity: 0; transform: translate3d(-24px, 0, 0); } }
-@keyframes vt-fade-out { to { opacity: 0; } }
-@keyframes vt-fade-in { from { opacity: 0; } }
+/* ── View transitions (Astro ClientRouter) ──────────────────────────────
+   Header and tab bar are their own layers and swap instantly (old snapshot
+   hidden, no animation), so the app chrome never blinks. Only <main> slides,
+   and the yellow tab pill glides from the old tab to the new one. */
+::view-transition-old(root),
+::view-transition-old(guide),
+::view-transition-old(topbar),
+::view-transition-old(tabbar),
+::view-transition-old(tab-home), ::view-transition-old(tab-music), ::view-transition-old(tab-books),
+::view-transition-old(nav-home), ::view-transition-old(nav-music), ::view-transition-old(nav-books) { display: none; }
+::view-transition-new(root),
+::view-transition-new(guide),
+::view-transition-group(guide),
+::view-transition-new(topbar),
+::view-transition-new(tabbar),
+::view-transition-group(topbar),
+::view-transition-group(tabbar),
+::view-transition-new(tab-home), ::view-transition-new(tab-music), ::view-transition-new(tab-books),
+::view-transition-group(tab-home), ::view-transition-group(tab-music), ::view-transition-group(tab-books),
+::view-transition-new(nav-home), ::view-transition-new(nav-music), ::view-transition-new(nav-books),
+::view-transition-group(nav-home), ::view-transition-group(nav-music), ::view-transition-group(nav-books) { animation: none; }
+::view-transition-group(tab-pill),
+::view-transition-group(nav-pill) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+/* Layer order during the transition. The snapshots don't inherit the page's
+   z-index, so without this the sliding page draws over Mèo and the bars. */
+::view-transition-group(guide) { z-index: 50; }
+::view-transition-group(topbar),
+::view-transition-group(tabbar) { z-index: 60; }
+::view-transition-group(tab-pill),
+::view-transition-group(nav-pill) { z-index: 61; }
+::view-transition-group(tab-home), ::view-transition-group(tab-music), ::view-transition-group(tab-books),
+::view-transition-group(nav-home), ::view-transition-group(nav-music), ::view-transition-group(nav-books) { z-index: 62; }
+
+@keyframes vt-out-left { to { opacity: 0; transform: translate3d(-8px, 0, 0); } }
+@keyframes vt-in-right { from { opacity: 0; transform: translate3d(16px, 0, 0); } }
+@keyframes vt-out-right { to { opacity: 0; transform: translate3d(8px, 0, 0); } }
+@keyframes vt-in-left { from { opacity: 0; transform: translate3d(-16px, 0, 0); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; }

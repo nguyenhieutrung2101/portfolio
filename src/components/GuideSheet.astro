@@ -16,7 +16,7 @@ interface Props {
 const { line, choicesHtml = '' } = Astro.props;
 ---
 
-<aside class="guide" data-guide aria-label="Mèo dẫn chuyện" transition:persist="guide" transition:name="guide" transition:animate="none">
+<aside class="guide" data-guide aria-label="Mèo dẫn chuyện" transition:persist="guide">
   <div class="guide-panel" data-guide-panel>
     <div class="guide-head" data-guide-handle>
       <span class="guide-grabber" aria-hidden="true"></span>
@@ -36,7 +36,9 @@ const { line, choicesHtml = '' } = Astro.props;
 </aside>
 
 <style>
-  .guide { z-index: 20; }
+  /* A fixed name in CSS, not transition:name: the guide is persisted across
+     pages, and a per-page scoped name would be lost on the new page. */
+  .guide { z-index: 20; view-transition-name: guide; }
 
   .guide-panel {
     position: relative;
@@ -275,15 +277,10 @@ const { line, choicesHtml = '' } = Astro.props;
   });
 
   // Each page leaves a <template data-cat-page> with Mèo's line and choices.
-  let firstLoad = true;
-  document.addEventListener('astro:page-load', () => {
+  // Swapped in as soon as the new page is in the DOM (after-swap, during the
+  // view transition — the guide's "new" snapshot is live), not after it ends.
+  document.addEventListener('astro:after-swap', () => {
     const page = document.querySelector<HTMLTemplateElement>('template[data-cat-page]');
-    if (firstLoad) {
-      firstLoad = false;
-      setCollapsed(collapsed, false);
-      sheet.spring.set(!desktop.matches && collapsed ? collapsedY() : 0);
-      return;
-    }
     perkAll();
     if (!page) return;
     content.replace(() => {
@@ -293,4 +290,8 @@ const { line, choicesHtml = '' } = Astro.props;
     });
     if (collapsed) guide.dataset.unread = '';
   });
+
+  // First load: the server already rendered this page's line; just settle.
+  setCollapsed(collapsed, false);
+  sheet.spring.set(!desktop.matches && collapsed ? collapsedY() : 0);
 </script>

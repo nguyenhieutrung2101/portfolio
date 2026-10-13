@@ -1,0 +1,13 @@
+# Hashed build assets never change.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Pages: a prefetched page can be used straight from cache for 2 minutes
+# (and refreshed in the background), so tapping a tab doesn't wait on the
+# network. Short enough that a new deploy shows up almost immediately.
+/
+  Cache-Control: public, max-age=0, stale-while-revalidate=120
+/nhac/*
+  Cache-Control: public, max-age=0, stale-while-revalidate=120
+/sach/*
+  Cache-Control: public, max-age=0, stale-while-revalidate=120

@@ -27,6 +27,14 @@ Hover chỉ bật với `(hover: hover) and (pointer: fine)`. Có hỗ trợ lig
 6. **Cử chỉ 1:1 + chiếu quán tính.** Sheet bám ngón tay, có rubber-band ở biên. Khi thả tay thì chiếu điểm dừng theo công thức của Apple, rồi chuyển vận tốc vào spring.
 7. **Cùng đường đi, cùng đường về.** Hướng trượt khi chuyển trang theo thứ tự các ngăn (Trang đầu → Nhạc → Nhà soạn nhạc → Sách), nên bấm Back thì trang trượt ngược lại.
 
+## Chuyển trang (View Transitions)
+
+- **Lớp cố định:** header, thanh tab và khung Mèo có `view-transition-name` riêng, không animate, và luôn nằm trên nội dung (đặt `z-index` cho các `::view-transition-group`). Trong lúc chuyển chỉ có `<main>` trượt.
+- **Không đặt `transition:*` trên `<html>`:** Astro sẽ gán cho nó một tên khác nhau ở mỗi trang, khiến trình duyệt phủ ảnh chụp cả trang cũ lên trên trang mới (cảm giác như tải lại trang).
+- **Tên cố định cho khung Mèo:** khung Mèo được giữ nguyên qua các trang (`transition:persist`), nên tên transition của nó phải đặt cố định bằng CSS, không dùng `transition:name`. Tên do `transition:name` sinh ra gắn theo từng trang và sẽ mất khi sang trang mới.
+- **Vệt vàng của tab:** là phần tử đầu tiên của thanh điều hướng. Khi chạm, nó trượt sang tab mới ngay lập tức bằng spring, rồi View Transition nối tiếp (`tab-pill` / `nav-pill`).
+- **Không phải chờ mạng:** HTML có header `stale-while-revalidate=120` (file `public/_headers`) và CSS được nhúng thẳng vào HTML. Một trang đã prefetch là đủ để hiện ra ngay khi chạm, không phải đợi thêm request nào.
+
 ## Review mockup ban đầu (đã sửa trong bản này)
 
 | Vấn đề trong mockup | Đã xử lý |
